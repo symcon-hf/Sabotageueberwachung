@@ -1,0 +1,12 @@
+{
+    "id": "{276F536B-9F2D-C6D3-B4BD-5924DA56950C}",
+    "author": "Ulrich Bittner",
+    "name": "Sabotageueberwachung",
+    "url": "https://github.com/ubittner/Sabotageueberwachung",
+    "compatibility": {
+        "version": "5.2"
+    },
+    "version": "4.0",
+    "build": 1,
+    "date": 1583254800
+}

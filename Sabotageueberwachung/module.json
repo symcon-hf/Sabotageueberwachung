@@ -1,0 +1,13 @@
+{
+  "id": "{BE2DC75C-D14A-E49B-001C-BFD428B6A793}",
+  "name": "Sabotageueberwachung",
+  "type": 3,
+  "vendor": "NTUB",
+  "aliases": [
+    "Sabotageüberwachung"
+  ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "SABO"
+}
