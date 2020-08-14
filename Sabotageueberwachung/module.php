@@ -1,5 +1,8 @@
 <?php
 
+/** @noinspection DuplicatedCode */
+/** @noinspection PhpUnused */
+
 /*
  * @module      Sabotageueberwachung
  *
@@ -12,11 +15,7 @@
  * @license    	CC BY-NC-SA 4.0
  *              https://creativecommons.org/licenses/by-nc-sa/4.0/
  *
- * @version     4.00-1
- * @date        2020-03-03, 18:00, 1583254800
- * @review      2020-03-03, 18:00
- *
- * @see         https://github.com/ubittner/Sabotageueberwachung/
+ * @see         https://github.com/ubittner/Sabotageueberwachung
  *
  * @guids       Library
  *              {276F536B-9F2D-C6D3-B4BD-5924DA56950C}
@@ -25,7 +24,6 @@
  *             	{BE2DC75C-D14A-E49B-001C-BFD428B6A793}
  */
 
-// Declare
 declare(strict_types=1);
 
 // Include
@@ -37,48 +35,45 @@ class Sabotageueberwachung extends IPSModule
     use SABO_alarmCall;
     use SABO_alarmLight;
     use SABO_alarmSiren;
+    use SABO_backupRestore;
     use SABO_notification;
     use SABO_variables;
 
     // Constants
+    private const SABOTAGEUEBERWACHUNG_LIBRARY_GUID = '{276F536B-9F2D-C6D3-B4BD-5924DA56950C}';
+    private const SABOTAGEUEBERWACHUNG_MODULE_GUID = '{BE2DC75C-D14A-E49B-001C-BFD428B6A793}';
     private const HOMEMATIC_DEVICE_GUID = '{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}';
 
     public function Create()
     {
         // Never delete this line!
         parent::Create();
-
-        // Register properties
         $this->RegisterProperties();
-
-        // Create profiles
         $this->CreateProfiles();
+    }
+
+    public function Destroy()
+    {
+        // Never delete this line!
+        parent::Destroy();
+        $this->DeleteProfiles();
     }
 
     public function ApplyChanges()
     {
         // Wait until IP-Symcon is started
         $this->RegisterMessage(0, IPS_KERNELSTARTED);
-
         // Never delete this line!
         parent::ApplyChanges();
-
         // Check runlevel
         if (IPS_GetKernelRunlevel() != KR_READY) {
             return;
         }
-
-        // Register variables
         $this->RegisterVariables();
-
-        // Register messages
         $this->RegisterMessages();
-
-        // Create overview
         $this->CreateOverview();
-
-        // Check actual status
         $this->CheckActualStatus();
+        $this->CheckMaintenanceMode();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void
@@ -88,12 +83,20 @@ class Sabotageueberwachung extends IPSModule
         // $Data[1] = value changed
         // $Data[2] = last value
         $this->SendDebug('MessageSink', 'Message from SenderID ' . $SenderID . ' with Message ' . $Message . "\r\n Data: " . print_r($Data, true), 0);
+        if (!empty($Data)) {
+            foreach ($Data as $key => $value) {
+                $this->SendDebug(__FUNCTION__, 'Data[' . $key . '] = ' . json_encode($value), 0);
+            }
+        }
         switch ($Message) {
             case IPS_KERNELSTARTED:
                 $this->KernelReady();
                 break;
 
             case VM_UPDATE:
+                if ($this->CheckMaintenanceMode()) {
+                    return;
+                }
                 $this->CreateOverview();
                 $this->CheckActualStatus();
                 $actualValue = boolval($Data[0]);
@@ -110,7 +113,22 @@ class Sabotageueberwachung extends IPSModule
 
     public function GetConfigurationForm()
     {
-        $formdata = json_decode(file_get_contents(__DIR__ . '/form.json'));
+        $formData = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        $moduleInfo = [];
+        $library = IPS_GetLibrary(self::SABOTAGEUEBERWACHUNG_LIBRARY_GUID);
+        $module = IPS_GetModule(self::SABOTAGEUEBERWACHUNG_MODULE_GUID);
+        $moduleInfo['name'] = $module['ModuleName'];
+        $moduleInfo['version'] = $library['Version'] . '-' . $library['Build'];
+        $moduleInfo['date'] = date('d.m.Y', $library['Date']);
+        $moduleInfo['time'] = date('H:i', $library['Date']);
+        $moduleInfo['developer'] = $library['Author'];
+        $formData['elements'][0]['items'][2]['caption'] = "Instanz ID:\t\t" . $this->InstanceID;
+        $formData['elements'][0]['items'][3]['caption'] = "Modul:\t\t\t" . $moduleInfo['name'];
+        $formData['elements'][0]['items'][4]['caption'] = "Version:\t\t\t" . $moduleInfo['version'];
+        $formData['elements'][0]['items'][5]['caption'] = "Datum:\t\t\t" . $moduleInfo['date'];
+        $formData['elements'][0]['items'][6]['caption'] = "Uhrzeit:\t\t\t" . $moduleInfo['time'];
+        $formData['elements'][0]['items'][7]['caption'] = "Entwickler:\t\t" . $moduleInfo['developer'];
+        $formData['elements'][0]['items'][8]['caption'] = "Präfix:\t\t\tSABO";
         // Registered messages
         $registeredVariables = $this->GetMessageList();
         foreach ($registeredVariables as $senderID => $messageID) {
@@ -132,26 +150,22 @@ class Sabotageueberwachung extends IPSModule
                 default:
                     $messageDescription = 'keine Bezeichnung';
             }
-            $formdata->elements[9]->items[0]->values[] = [
+            $formData['actions'][1]['items'][0]['values'][] = [
                 'ParentName'                                            => $parentName,
                 'SenderID'                                              => $senderID,
                 'SenderName'                                            => $senderName,
                 'MessageID'                                             => $messageID,
                 'MessageDescription'                                    => $messageDescription];
         }
-        return json_encode($formdata);
+        return json_encode($formData);
     }
 
-    public function Destroy()
+    public function ReloadConfiguration()
     {
-        // Never delete this line!
-        parent::Destroy();
-
-        // Delete profiles
-        $this->DeleteProfiles();
+        $this->ReloadForm();
     }
 
-    //#################### Request action
+    #################### Request action
 
     public function RequestAction($Ident, $Value)
     {
@@ -163,23 +177,25 @@ class Sabotageueberwachung extends IPSModule
         }
     }
 
+    #################### Private
+
     private function KernelReady()
     {
         $this->ApplyChanges();
     }
 
-    //#################### Private
-
     private function RegisterProperties(): void
     {
+        $this->RegisterPropertyString('Note', '');
+        $this->RegisterPropertyBoolean('MaintenanceMode', false);
         // Descriptions
         $this->RegisterPropertyString('Location', '');
         // Monitored variables
         $this->RegisterPropertyString('MonitoredVariables', '[]');
         // Visibility
         $this->RegisterPropertyBoolean('UseOverview', false);
-        $this->RegisterPropertyBoolean('UseLinks', false);
         $this->RegisterPropertyInteger('LinkCategory', 0);
+        $this->RegisterPropertyBoolean('UseLinks', false);
         // Alarm protocol
         $this->RegisterPropertyInteger('AlarmProtocol', 0);
         // Notification
@@ -235,13 +251,13 @@ class Sabotageueberwachung extends IPSModule
     private function RegisterVariables(): void
     {
         // Monitoring
-        $this->MaintainVariable('Monitoring', 'Überwachung', 0, '~Switch', 0, true);
+        $this->MaintainVariable('Monitoring', 'Überwachung', 0, '~Switch', 10, true);
         $this->EnableAction('Monitoring');
         // Status
         $profile = 'SABO.' . $this->InstanceID . '.Status';
-        $this->MaintainVariable('Status', 'Status', 0, $profile, 1, true);
+        $this->MaintainVariable('Status', 'Status', 0, $profile, 20, true);
         // Overview
-        $this->MaintainVariable('Overview', 'Aktoren / Sensoren', 3, 'HTMLBox', 2, true);
+        $this->MaintainVariable('Overview', 'Aktoren / Sensoren', 3, 'HTMLBox', 30, true);
         $overview = $this->GetIDForIdent('Overview');
         IPS_SetIcon($overview, 'Eyes');
         $useOverview = $this->ReadPropertyBoolean('UseOverview');
@@ -275,5 +291,20 @@ class Sabotageueberwachung extends IPSModule
                 }
             }
         }
+    }
+
+    private function CheckMaintenanceMode(): bool
+    {
+        $result = false;
+        $status = 102;
+        if ($this->ReadPropertyBoolean('MaintenanceMode')) {
+            $result = true;
+            $status = 104;
+            $this->SendDebug(__FUNCTION__, 'Abbruch, der Wartungsmodus ist aktiv!', 0);
+            $this->LogMessage('ID ' . $this->InstanceID . ', ' . __FUNCTION__ . ', Abbruch, der Wartungsmodus ist aktiv!', KL_WARNING);
+        }
+        $this->SetStatus($status);
+        IPS_SetDisabled($this->InstanceID, $result);
+        return $result;
     }
 }

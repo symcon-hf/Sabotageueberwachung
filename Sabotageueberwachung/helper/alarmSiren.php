@@ -1,6 +1,7 @@
 <?php
 
-// Declare
+/** @noinspection PhpUndefinedFunctionInspection */
+
 declare(strict_types=1);
 
 trait SABO_alarmSiren
@@ -14,6 +15,9 @@ trait SABO_alarmSiren
      */
     public function ToggleAlarmSiren(bool $State): void
     {
+        if ($this->CheckMaintenanceMode()) {
+            return;
+        }
         // Alarm siren
         $alarmSiren = $this->ReadPropertyInteger('AlarmSiren');
         if ($alarmSiren != 0 && @IPS_ObjectExists($alarmSiren)) {

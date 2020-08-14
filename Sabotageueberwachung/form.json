@@ -2,7 +2,7 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "Instanzinformationen",
+      "caption": "Sabotageüberwachung",
       "items": [
         {
           "type": "Image",
@@ -10,39 +10,50 @@
         },
         {
           "type": "Label",
-          "caption": "Ein Gemeinschaftsprojekt von Normen Thiel und Ulrich Bittner\n"
+          "caption": "Ein Gemeinschaftsprojekt von Normen Thiel und Ulrich Bittner\n\nMit dieser Instanz können Homematic IP Aktoren und Sensoren auf Sabotage überwachht werden.\nWeitere Informationen entnehmen Sie bitte der Dokumentation.\n"
         },
         {
           "type": "Label",
-          "caption": "Mit dieser Instanz können Homematic IP Aktoren und Sensoren auf Sabotage überwachht werden.\nWeitere Informationen entnehmen Sie bitte der Dokumentation.\n"
+          "caption": "Instanz ID:"
         },
         {
           "type": "Label",
-          "caption": "Symcon Version:\t5.2>"
+          "caption": "Modul:"
         },
         {
           "type": "Label",
-          "caption": "Name:\t\t\tSabotageueberwachung"
+          "caption": "Version:"
         },
         {
           "type": "Label",
-          "caption": "Version:\t\t\t4.00-1"
+          "caption": "Datum:"
         },
         {
           "type": "Label",
-          "caption": "Datum:\t\t\t03. März 2020"
+          "caption": "Uhrzeit:"
         },
         {
           "type": "Label",
-          "caption": "Uhrzeit:\t\t\t18:00"
+          "caption": "Entwickler:"
         },
         {
           "type": "Label",
-          "caption": "Entwickler:\t\tUlrich Bittner"
+          "caption": "Präfix:"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "Note",
+          "caption": "Notiz",
+          "width": "600px"
         },
         {
           "type": "Label",
-          "caption": "Präfix:\t\t\tSABO"
+          "caption": " "
+        },
+        {
+          "type": "CheckBox",
+          "name": "MaintenanceMode",
+          "caption": "Wartungsmodus"
         }
       ]
     },
@@ -135,23 +146,15 @@
           "caption": "\nBitte wählen Sie aus, ob Variablenverknüpfungen angelegt werden sollen:"
         },
         {
-          "type": "RowLayout",
-          "items": [
-            {
-              "type": "CheckBox",
-              "name": "UseLinks",
-              "caption": "Variablenverknüpfungen anlegen"
-            },
-            {
-              "type": "Label",
-              "caption": "\t"
-            },
-            {
-              "type": "SelectCategory",
-              "name": "LinkCategory",
-              "caption": "Kategorie"
-            }
-          ]
+          "type": "SelectCategory",
+          "name": "LinkCategory",
+          "caption": "Kategorie",
+          "width": "600px"
+        },
+        {
+          "type": "CheckBox",
+          "name": "UseLinks",
+          "caption": "Variablenverknüpfungen anlegen"
         }
       ]
     },
@@ -161,12 +164,13 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Bitte wählen Sie das zugehörige Alarmprotokoll aus:"
+          "caption": "Bitte wählen Sie das Alarmprotokoll aus:"
         },
         {
           "type": "SelectInstance",
           "name": "AlarmProtocol",
-          "caption": "Alarmprotokoll"
+          "caption": "Alarmprotokoll",
+          "width": "600px"
         }
       ]
     },
@@ -181,7 +185,8 @@
         {
           "type": "SelectInstance",
           "name": "NotificationCenter",
-          "caption": "Benachrichtigungszentrale"
+          "caption": "Benachrichtigungszentrale",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -190,7 +195,8 @@
         {
           "type": "SelectScript",
           "name": "NotificationScript",
-          "caption": "Skript"
+          "caption": "Skript",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -209,7 +215,8 @@
         {
           "type": "SelectInstance",
           "name": "AlarmSiren",
-          "caption": "Alarmsirene"
+          "caption": "Alarmsirene",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -218,7 +225,8 @@
         {
           "type": "SelectScript",
           "name": "AlarmSirenScript",
-          "caption": "Skript"
+          "caption": "Skript",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -237,7 +245,8 @@
         {
           "type": "SelectInstance",
           "name": "AlarmLight",
-          "caption": "Alarmbeleuchtung"
+          "caption": "Alarmbeleuchtung",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -246,7 +255,8 @@
         {
           "type": "SelectScript",
           "name": "AlarmLightScript",
-          "caption": "Skript"
+          "caption": "Skript",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -265,7 +275,8 @@
         {
           "type": "SelectInstance",
           "name": "AlarmCall",
-          "caption": "Alarmanruf"
+          "caption": "Alarmanruf",
+          "width": "600px"
         },
         {
           "type": "Label",
@@ -274,11 +285,74 @@
         {
           "type": "SelectScript",
           "name": "AlarmCallScript",
-          "caption": "Skript"
+          "caption": "Skript",
+          "width": "600px"
         },
         {
           "type": "Label",
           "caption": "Wird ein Skript verwendet, so wird das Skript ausgeführt."
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Konfiguration",
+      "items": [
+        {
+          "type": "Button",
+          "caption": "Neu einlesen",
+          "onClick": "SABO_ReloadConfiguration($id);"
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "SelectCategory",
+              "name": "BackupCategory",
+              "caption": "Kategorie",
+              "width": "600px"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "Button",
+              "caption": "Sichern",
+              "onClick": "SABO_CreateBackup($id, $BackupCategory);"
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "SelectScript",
+              "name": "ConfigurationScript",
+              "caption": "Konfigurationsskript",
+              "width": "600px"
+            },
+            {
+              "type": "Label",
+              "caption": " "
+            },
+            {
+              "type": "PopupButton",
+              "caption": "Wiederherstellen",
+              "popup": {
+                "caption": "Konfiguration wirklich wiederherstellen?",
+                "items": [
+                  {
+                    "type": "Button",
+                    "caption": "Wiederherstellen",
+                    "onClick": "SABO_RestoreConfiguration($id, $ConfigurationScript);"
+                  }
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -324,9 +398,7 @@
           ]
         }
       ]
-    }
-  ],
-  "actions": [
+    },
     {
       "type": "ExpansionPanel",
       "caption": "Aktoren / Sensoren",

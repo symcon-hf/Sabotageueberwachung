@@ -1,6 +1,7 @@
 <?php
 
-// Declare
+/** @noinspection PhpUndefinedFunctionInspection */
+
 declare(strict_types=1);
 
 trait SABO_alarmCall
@@ -12,6 +13,9 @@ trait SABO_alarmCall
      */
     public function ExecuteAlarmCall(string $SensorName): void
     {
+        if ($this->CheckMaintenanceMode()) {
+            return;
+        }
         // Alarm call
         $alarmCall = $this->ReadPropertyInteger('AlarmCall');
         if ($alarmCall != 0 && @IPS_ObjectExists($alarmCall)) {

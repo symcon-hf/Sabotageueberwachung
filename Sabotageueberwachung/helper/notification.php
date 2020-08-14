@@ -1,6 +1,8 @@
 <?php
 
-// Declare
+/** @noinspection PhpUndefinedFunctionInspection */
+/** @noinspection PhpUnusedPrivateMethodInspection */
+
 declare(strict_types=1);
 
 trait SABO_notification
@@ -19,6 +21,9 @@ trait SABO_notification
      */
     private function SendNotification(string $Title, string $Text, int $MessageType): void
     {
+        if ($this->CheckMaintenanceMode()) {
+            return;
+        }
         $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
         if ($notificationCenter != 0 && @IPS_ObjectExists($notificationCenter)) {
             @BENA_SendNotification($notificationCenter, $Title, $Text, $MessageType);

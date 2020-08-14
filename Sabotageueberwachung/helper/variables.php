@@ -1,6 +1,8 @@
 <?php
 
-// Declare
+/** @noinspection PhpUnused */
+/** @noinspection PhpUndefinedFunctionInspection */
+
 declare(strict_types=1);
 
 trait SABO_variables
@@ -12,6 +14,9 @@ trait SABO_variables
      */
     public function ExecuteAlerting(int $SenderID): void
     {
+        if ($this->CheckMaintenanceMode()) {
+            return;
+        }
         $timeStamp = date('d.m.Y, H:i:s');
         $alarmObjectName = $this->ReadPropertyString('Location');
         $alarmProtocol = $this->ReadPropertyInteger('AlarmProtocol');
@@ -241,7 +246,7 @@ trait SABO_variables
         }
     }
 
-    //#################### Private
+    #################### Private
 
     /**
      * Creates an overview of all monitored variables.
