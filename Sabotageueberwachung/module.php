@@ -1,12 +1,11 @@
 <?php
 
-/** @noinspection DuplicatedCode */
 /** @noinspection PhpUnused */
 
 /*
  * @module      Sabotageueberwachung
  *
- * @prefix      SABO
+ * @prefix      SAB
  *
  * @file        module.php
  *
@@ -17,36 +16,25 @@
  *
  * @see         https://github.com/ubittner/Sabotageueberwachung
  *
- * @guids       Library
- *              {276F536B-9F2D-C6D3-B4BD-5924DA56950C}
- *
- *              Sabotageueberwachung
- *             	{BE2DC75C-D14A-E49B-001C-BFD428B6A793}
  */
 
 declare(strict_types=1);
 
-// Include
 include_once __DIR__ . '/helper/autoload.php';
 
 class Sabotageueberwachung extends IPSModule
 {
-    // Helper
-    use SABO_alarmCall;
-    use SABO_alarmLight;
-    use SABO_alarmSiren;
-    use SABO_backupRestore;
-    use SABO_notification;
-    use SABO_variables;
+    //Helper
+    use SAB_backupRestore;
+    use SAB_notification;
+    use SAB_variables;
 
-    // Constants
-    private const SABOTAGEUEBERWACHUNG_LIBRARY_GUID = '{276F536B-9F2D-C6D3-B4BD-5924DA56950C}';
-    private const SABOTAGEUEBERWACHUNG_MODULE_GUID = '{BE2DC75C-D14A-E49B-001C-BFD428B6A793}';
+    //Constants
     private const HOMEMATIC_DEVICE_GUID = '{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}';
 
     public function Create()
     {
-        // Never delete this line!
+        //Never delete this line!
         parent::Create();
         $this->RegisterProperties();
         $this->CreateProfiles();
@@ -54,18 +42,18 @@ class Sabotageueberwachung extends IPSModule
 
     public function Destroy()
     {
-        // Never delete this line!
+        //Never delete this line!
         parent::Destroy();
         $this->DeleteProfiles();
     }
 
     public function ApplyChanges()
     {
-        // Wait until IP-Symcon is started
+        //Wait until IP-Symcon is started
         $this->RegisterMessage(0, IPS_KERNELSTARTED);
-        // Never delete this line!
+        //Never delete this line!
         parent::ApplyChanges();
-        // Check runlevel
+        //Check runlevel
         if (IPS_GetKernelRunlevel() != KR_READY) {
             return;
         }
@@ -78,10 +66,6 @@ class Sabotageueberwachung extends IPSModule
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data): void
     {
-        // Send debug
-        // $Data[0] = actual value
-        // $Data[1] = value changed
-        // $Data[2] = last value
         $this->SendDebug('MessageSink', 'Message from SenderID ' . $SenderID . ' with Message ' . $Message . "\r\n Data: " . print_r($Data, true), 0);
         if (!empty($Data)) {
             foreach ($Data as $key => $value) {
@@ -94,6 +78,12 @@ class Sabotageueberwachung extends IPSModule
                 break;
 
             case VM_UPDATE:
+                //$Data[0] = actual value
+                //$Data[1] = value changed
+                //$Data[2] = last value
+                //$Data[3] = timestamp actual value
+                //$Data[4] = timestamp value changed
+                //$Data[5] = timestamp last value
                 if ($this->CheckMaintenanceMode()) {
                     return;
                 }
@@ -114,22 +104,26 @@ class Sabotageueberwachung extends IPSModule
     public function GetConfigurationForm()
     {
         $formData = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
-        $moduleInfo = [];
-        $library = IPS_GetLibrary(self::SABOTAGEUEBERWACHUNG_LIBRARY_GUID);
-        $module = IPS_GetModule(self::SABOTAGEUEBERWACHUNG_MODULE_GUID);
-        $moduleInfo['name'] = $module['ModuleName'];
-        $moduleInfo['version'] = $library['Version'] . '-' . $library['Build'];
-        $moduleInfo['date'] = date('d.m.Y', $library['Date']);
-        $moduleInfo['time'] = date('H:i', $library['Date']);
-        $moduleInfo['developer'] = $library['Author'];
-        $formData['elements'][0]['items'][2]['caption'] = "Instanz ID:\t\t" . $this->InstanceID;
-        $formData['elements'][0]['items'][3]['caption'] = "Modul:\t\t\t" . $moduleInfo['name'];
-        $formData['elements'][0]['items'][4]['caption'] = "Version:\t\t\t" . $moduleInfo['version'];
-        $formData['elements'][0]['items'][5]['caption'] = "Datum:\t\t\t" . $moduleInfo['date'];
-        $formData['elements'][0]['items'][6]['caption'] = "Uhrzeit:\t\t\t" . $moduleInfo['time'];
-        $formData['elements'][0]['items'][7]['caption'] = "Entwickler:\t\t" . $moduleInfo['developer'];
-        $formData['elements'][0]['items'][8]['caption'] = "Präfix:\t\t\tSABO";
-        // Registered messages
+        //Monitored variables
+        $vars = json_decode($this->ReadPropertyString('MonitoredVariables'));
+        if (!empty($vars)) {
+            foreach ($vars as $var) {
+                $id = $var->ID;
+                $rowColor = '';
+                if ($id == 0 || !@IPS_ObjectExists($id)) {
+                    if ($var->Use) {
+                        $rowColor = '#FFC0C0'; # red
+                    }
+                }
+                $formData['elements'][1]['items'][0]['values'][] = [
+                    'Use'      => $var->Use,
+                    'ID'       => $id,
+                    'Name'     => $var->Name,
+                    'Address'  => $var->Address,
+                    'rowColor' => $rowColor];
+            }
+        }
+        //Registered messages
         $registeredVariables = $this->GetMessageList();
         foreach ($registeredVariables as $senderID => $messageID) {
             $senderName = IPS_GetName($senderID);
@@ -186,50 +180,37 @@ class Sabotageueberwachung extends IPSModule
 
     private function RegisterProperties(): void
     {
-        $this->RegisterPropertyString('Note', '');
+        //Functions
         $this->RegisterPropertyBoolean('MaintenanceMode', false);
-        // Descriptions
-        $this->RegisterPropertyString('Location', '');
-        // Monitored variables
-        $this->RegisterPropertyString('MonitoredVariables', '[]');
-        // Visibility
         $this->RegisterPropertyBoolean('UseOverview', false);
-        $this->RegisterPropertyInteger('LinkCategory', 0);
-        $this->RegisterPropertyBoolean('UseLinks', false);
-        // Alarm protocol
+        //Descriptions
+        $this->RegisterPropertyString('Location', '');
+        //Monitored variables
+        $this->RegisterPropertyString('MonitoredVariables', '[]');
+        //Alarm protocol
         $this->RegisterPropertyInteger('AlarmProtocol', 0);
-        // Notification
+        //Notification center
         $this->RegisterPropertyInteger('NotificationCenter', 0);
-        $this->RegisterPropertyInteger('NotificationScript', 0);
-        // Alarm siren
-        $this->RegisterPropertyInteger('AlarmSiren', 0);
-        $this->RegisterPropertyInteger('AlarmSirenScript', 0);
-        // Alarm light
-        $this->RegisterPropertyInteger('AlarmLight', 0);
-        $this->RegisterPropertyInteger('AlarmLightScript', 0);
-        // Alarm call
-        $this->RegisterPropertyInteger('AlarmCall', 0);
-        $this->RegisterPropertyInteger('AlarmCallScript', 0);
     }
 
     private function CreateProfiles(): void
     {
-        // Status
-        $profileName = 'SABO.' . $this->InstanceID . '.Status';
+        //Status
+        $profileName = 'SAB.' . $this->InstanceID . '.Status';
         if (!IPS_VariableProfileExists($profileName)) {
             IPS_CreateVariableProfile($profileName, 0);
         }
         IPS_SetVariableProfileAssociation($profileName, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profileName, 1, 'Alarm', 'Warning', 0xFF0000);
-        // Homematic
-        $profile = 'SABO.Sabotage.Integer';
+        //Homematic
+        $profile = 'SAB.Sabotage.Integer';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 1);
         }
         IPS_SetVariableProfileAssociation($profile, 0, 'OK', 'Information', 0x00FF00);
         IPS_SetVariableProfileAssociation($profile, 1, 'Sabotage', 'Warning', 0xFF0000);
-        // Homematic IP
-        $profile = 'SABO.Sabotage.Boolean';
+        //Homematic IP
+        $profile = 'SAB.Sabotage.Boolean';
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, 0);
         }
@@ -241,7 +222,7 @@ class Sabotageueberwachung extends IPSModule
     {
         $profiles = ['Status'];
         foreach ($profiles as $profile) {
-            $profileName = 'SABO.' . $this->InstanceID . '.' . $profile;
+            $profileName = 'SAB.' . $this->InstanceID . '.' . $profile;
             if (@IPS_VariableProfileExists($profileName)) {
                 IPS_DeleteVariableProfile($profileName);
             }
@@ -250,14 +231,14 @@ class Sabotageueberwachung extends IPSModule
 
     private function RegisterVariables(): void
     {
-        // Monitoring
+        //Monitoring
         $this->MaintainVariable('Monitoring', 'Überwachung', 0, '~Switch', 10, true);
         $this->EnableAction('Monitoring');
-        // Status
-        $profile = 'SABO.' . $this->InstanceID . '.Status';
+        //Status
+        $profile = 'SAB.' . $this->InstanceID . '.Status';
         $this->MaintainVariable('Status', 'Status', 0, $profile, 20, true);
-        // Overview
-        $this->MaintainVariable('Overview', 'Aktoren / Sensoren', 3, 'HTMLBox', 30, true);
+        //Overview
+        $this->MaintainVariable('Overview', 'Variablen', 3, 'HTMLBox', 30, true);
         $overview = $this->GetIDForIdent('Overview');
         IPS_SetIcon($overview, 'Eyes');
         $useOverview = $this->ReadPropertyBoolean('UseOverview');
@@ -269,7 +250,7 @@ class Sabotageueberwachung extends IPSModule
 
     private function RegisterMessages(): void
     {
-        // Unregister all variable update messages first
+        //Unregister
         $registeredMessages = $this->GetMessageList();
         if (!empty($registeredMessages)) {
             foreach ($registeredMessages as $id => $registeredMessage) {
@@ -280,7 +261,7 @@ class Sabotageueberwachung extends IPSModule
                 }
             }
         }
-        // Register variables
+        //Register
         $variables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($variables)) {
             foreach ($variables as $variable) {

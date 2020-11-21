@@ -1,11 +1,27 @@
 <?php
 
-/** @noinspection PhpUnused */
 /** @noinspection PhpUndefinedFunctionInspection */
+/** @noinspection PhpUnused */
+
+/*
+ * @module      Sabotageueberwachung
+ *
+ * @prefix      SAB
+ *
+ * @file        SAB_variables.php
+ *
+ * @author      Ulrich Bittner
+ * @copyright   (c) 2020
+ * @license    	CC BY-NC-SA 4.0
+ *              https://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * @see         https://github.com/ubittner/Sabotageueberwachung
+ *
+ */
 
 declare(strict_types=1);
 
-trait SABO_variables
+trait SAB_variables
 {
     /**
      * Executes the alerting.
@@ -30,7 +46,7 @@ trait SABO_variables
                     $name = $monitoredVariables[$key]['Name'];
                 }
             }
-            // Log
+            //Log
             if (isset($name)) {
                 $text = $name . ' , es wurde eine Sabotage erkannt. Bitte prüfen! (ID ' . $SenderID . ')';
             } else {
@@ -38,17 +54,11 @@ trait SABO_variables
             }
             $logText = $timeStamp . ', ' . $text;
             if ($alarmProtocol != 0 && @IPS_ObjectExists($alarmProtocol)) {
-                @APRO_UpdateMessages($alarmProtocol, $logText, 2);
+                @AP_UpdateMessages($alarmProtocol, $logText, 2);
             }
-            // Notification
+            //Notification
             $title = $alarmObjectName . ', Sabotage!';
             $this->SendNotification($title, $logText, 3);
-            // Alarm siren
-            $this->ToggleAlarmSiren(true);
-            // Alarm light
-            $this->ToggleAlarmLight(true);
-            // Alarm call
-            $this->ExecuteAlarmCall($name);
         }
     }
 
@@ -70,7 +80,7 @@ trait SABO_variables
                         $match = true;
                     }
                     if ($match) {
-                        // Check for variable
+                        //Check for variable
                         if ($object['ObjectType'] == 2) {
                             $name = strstr(@IPS_GetName($instanceID), ':', true);
                             if ($name == false) {
@@ -82,9 +92,9 @@ trait SABO_variables
                     }
                 }
             }
-            // Get already listed variables
+            //Get already listed variables
             $listedVariables = json_decode($this->ReadPropertyString('MonitoredVariables'), true);
-            // Delete non existing variables anymore
+            //Delete non existing variables anymore
             if (!empty($listedVariables)) {
                 $deleteVariables = array_diff(array_column($listedVariables, 'ID'), array_column($variables, 'ID'));
                 if (!empty($deleteVariables)) {
@@ -93,7 +103,7 @@ trait SABO_variables
                     }
                 }
             }
-            // Add new variables
+            //Add new variables
             if (!empty($listedVariables)) {
                 $addVariables = array_diff(array_column($variables, 'ID'), array_column($listedVariables, 'ID'));
                 if (!empty($addVariables)) {
@@ -107,14 +117,14 @@ trait SABO_variables
                 $listedVariables = $variables;
             }
         }
-        // Sort variables by name
+        //Sort variables by name
         usort($listedVariables, function ($a, $b)
         {
             return $a['Name'] <=> $b['Name'];
         });
-        // Rebase array
+        //Rebase array
         $listedVariables = array_values($listedVariables);
-        // Update variable list
+        //Update variable list
         $json = json_encode($listedVariables);
         @IPS_SetProperty($this->InstanceID, 'MonitoredVariables', $json);
         if (@IPS_HasChanges($this->InstanceID)) {
@@ -132,28 +142,28 @@ trait SABO_variables
      */
     public function AssignVariableProfile(bool $Override): void
     {
-        // Assign profile only for listed variables
+        //Assign profile only for listed variables
         $variables = json_decode($this->ReadPropertyString('MonitoredVariables'));
         if (!empty($variables)) {
             foreach ($variables as $variable) {
                 $variableType = @IPS_GetVariable($variable->ID)['VariableType'];
                 $profileName = null;
-                // Boolean variable
+                //Boolean variable
                 if ($variableType == 0) {
-                    $profileName = 'SABO.Sabotage.Boolean';
+                    $profileName = 'SAB.Sabotage.Boolean';
                 }
-                // Integer variable
+                //Integer variable
                 if ($variableType == 1) {
-                    $profileName = 'SABO.Sabotage.Integer';
+                    $profileName = 'SAB.Sabotage.Integer';
                 }
-                // Always assign profile
+                //Always assign profile
                 if ($Override) {
                     if (!is_null($profileName)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
                     }
-                } // Only assign profile, if variable has no profile
+                }// Only assign profile, if variable has no profile
                 else {
-                    // Check if variable has a profile
+                    //Check if variable has a profile
                     $assignedProfile = @IPS_GetVariable($variable->ID)['VariableProfile'];
                     if (empty($assignedProfile)) {
                         @IPS_SetVariableCustomProfile($variable->ID, $profileName);
@@ -166,84 +176,82 @@ trait SABO_variables
 
     /**
      * Creates links of monitored variables.
+     *
+     * @param int $LinkCategory
      */
-    public function CreateVariableLinks(): void
+    public function CreateVariableLinks(int $LinkCategory): void
     {
-        $useLinks = $this->ReadPropertyBoolean('UseLinks');
-        if ($useLinks) {
-            $categoryID = $this->ReadPropertyInteger('LinkCategory');
-            // Define icon first
-            $icon = 'Warning';
-            // Get all monitored variables
-            $variables = json_decode($this->ReadPropertyString('MonitoredVariables'));
-            $targetIDs = [];
+        //Define icon first
+        $icon = 'Warning';
+        //Get all monitored variables
+        $variables = json_decode($this->ReadPropertyString('MonitoredVariables'));
+        $targetIDs = [];
+        $i = 0;
+        foreach ($variables as $variable) {
+            if ($variable->Use) {
+                $targetIDs[$i] = ['name' => $variable->Name, 'targetID' => $variable->ID];
+                $i++;
+            }
+        }
+        //Sort array alphabetically by device name
+        sort($targetIDs);
+        //Get all existing links (links have not an ident field, so we use the object info field)
+        $existingTargetIDs = [];
+        $links = @IPS_GetLinkList();
+        if (!empty($links)) {
             $i = 0;
-            foreach ($variables as $variable) {
-                if ($variable->Use) {
-                    $targetIDs[$i] = ['name' => $variable->Name, 'targetID' => $variable->ID];
+            foreach ($links as $link) {
+                $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
+                if ($linkInfo == 'SAB.' . $this->InstanceID) {
+                    // Get target id
+                    $existingTargetID = @IPS_GetLink($link)['TargetID'];
+                    $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
                     $i++;
                 }
             }
-            // Sort array alphabetically by device name
-            sort($targetIDs);
-            // Get all existing links (links have not an ident field, so we use the object info field)
-            $existingTargetIDs = [];
-            $links = @IPS_GetLinkList();
-            if (!empty($links)) {
-                $i = 0;
-                foreach ($links as $link) {
-                    $linkInfo = @IPS_GetObject($link)['ObjectInfo'];
-                    if ($linkInfo == 'SABO.' . $this->InstanceID) {
-                        // Get target id
-                        $existingTargetID = @IPS_GetLink($link)['TargetID'];
-                        $existingTargetIDs[$i] = ['linkID' => $link, 'targetID' => $existingTargetID];
-                        $i++;
-                    }
-                }
-            }
-            // Delete dead links
-            $deadLinks = array_diff(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
-            if (!empty($deadLinks)) {
-                foreach ($deadLinks as $targetID) {
-                    $position = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
-                    $linkID = $existingTargetIDs[$position]['linkID'];
-                    if (@IPS_LinkExists($linkID)) {
-                        @IPS_DeleteLink($linkID);
-                    }
-                }
-            }
-            // Create new links
-            $newLinks = array_diff(array_column($targetIDs, 'targetID'), array_column($existingTargetIDs, 'targetID'));
-            if (!empty($newLinks)) {
-                foreach ($newLinks as $targetID) {
-                    $linkID = @IPS_CreateLink();
-                    @IPS_SetParent($linkID, $categoryID);
-                    $position = array_search($targetID, array_column($targetIDs, 'targetID'));
-                    @IPS_SetPosition($linkID, $position + 1);
-                    $name = $targetIDs[$position]['name'];
-                    @IPS_SetName($linkID, $name);
-                    @IPS_SetLinkTargetID($linkID, $targetID);
-                    @IPS_SetInfo($linkID, 'SABO.' . $this->InstanceID);
-                    @IPS_SetIcon($linkID, $icon);
-                }
-            }
-            // Edit existing links
-            $existingLinks = array_intersect(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
-            if (!empty($existingLinks)) {
-                foreach ($existingLinks as $targetID) {
-                    $position = array_search($targetID, array_column($targetIDs, 'targetID'));
-                    $targetID = $targetIDs[$position]['targetID'];
-                    $index = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
-                    $linkID = $existingTargetIDs[$index]['linkID'];
-                    @IPS_SetPosition($linkID, $position + 3);
-                    $name = $targetIDs[$position]['name'];
-                    @IPS_SetName($linkID, $name);
-                    @IPS_SetInfo($linkID, 'SABO.' . $this->InstanceID);
-                    @IPS_SetIcon($linkID, $icon);
-                }
-            }
-            echo 'Variablenverknüpfungen erfolgreich erstellt!';
         }
+        //Delete dead links
+        $deadLinks = array_diff(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
+        if (!empty($deadLinks)) {
+            foreach ($deadLinks as $targetID) {
+                $position = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
+                $linkID = $existingTargetIDs[$position]['linkID'];
+                if (@IPS_LinkExists($linkID)) {
+                    @IPS_DeleteLink($linkID);
+                }
+            }
+        }
+        //Create new links
+        $newLinks = array_diff(array_column($targetIDs, 'targetID'), array_column($existingTargetIDs, 'targetID'));
+        if (!empty($newLinks)) {
+            foreach ($newLinks as $targetID) {
+                $linkID = @IPS_CreateLink();
+                @IPS_SetParent($linkID, $LinkCategory);
+                $position = array_search($targetID, array_column($targetIDs, 'targetID'));
+                @IPS_SetPosition($linkID, $position + 1);
+                $name = $targetIDs[$position]['name'];
+                @IPS_SetName($linkID, $name);
+                @IPS_SetLinkTargetID($linkID, $targetID);
+                @IPS_SetInfo($linkID, 'SAB.' . $this->InstanceID);
+                @IPS_SetIcon($linkID, $icon);
+            }
+        }
+        //Edit existing links
+        $existingLinks = array_intersect(array_column($existingTargetIDs, 'targetID'), array_column($targetIDs, 'targetID'));
+        if (!empty($existingLinks)) {
+            foreach ($existingLinks as $targetID) {
+                $position = array_search($targetID, array_column($targetIDs, 'targetID'));
+                $targetID = $targetIDs[$position]['targetID'];
+                $index = array_search($targetID, array_column($existingTargetIDs, 'targetID'));
+                $linkID = $existingTargetIDs[$index]['linkID'];
+                @IPS_SetPosition($linkID, $position + 3);
+                $name = $targetIDs[$position]['name'];
+                @IPS_SetName($linkID, $name);
+                @IPS_SetInfo($linkID, 'SAB.' . $this->InstanceID);
+                @IPS_SetIcon($linkID, $icon);
+            }
+        }
+        echo 'Variablenverknüpfungen erfolgreich erstellt!';
     }
 
     #################### Private
@@ -270,7 +278,7 @@ trait SABO_variables
                                 $deviceAddress = '-';
                             }
                             $actualStateText = 'OK';
-                            // Set color to red
+                            //Set color to red
                             $actualValue = boolval(GetValue($id));
                             if ($actualValue) {
                                 $id = '<span style="color:#FF0000"><b>' . $id . '</b></span>';

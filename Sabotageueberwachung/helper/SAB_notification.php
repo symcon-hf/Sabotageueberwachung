@@ -1,11 +1,27 @@
 <?php
 
-/** @noinspection PhpUndefinedFunctionInspection */
 /** @noinspection PhpUnusedPrivateMethodInspection */
+/** @noinspection PhpUndefinedFunctionInspection */
+
+/*
+ * @module      Sabotageueberwachung
+ *
+ * @prefix      SAB
+ *
+ * @file        SAB_notification.php
+ *
+ * @author      Ulrich Bittner
+ * @copyright   (c) 2020
+ * @license    	CC BY-NC-SA 4.0
+ *              https://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * @see         https://github.com/ubittner/Sabotageueberwachung
+ *
+ */
 
 declare(strict_types=1);
 
-trait SABO_notification
+trait SAB_notification
 {
     /**
      * Sends a notification.
@@ -26,12 +42,7 @@ trait SABO_notification
         }
         $notificationCenter = $this->ReadPropertyInteger('NotificationCenter');
         if ($notificationCenter != 0 && @IPS_ObjectExists($notificationCenter)) {
-            @BENA_SendNotification($notificationCenter, $Title, $Text, $MessageType);
-        }
-        // Execute script
-        $id = $this->ReadPropertyInteger('NotificationScript');
-        if ($id != 0 && IPS_ObjectExists($id)) {
-            IPS_RunScriptEx($id, ['Title' => $Title, 'Text' => $Text]);
+            @BZ_SendNotification($notificationCenter, $Title, $Text, $MessageType);
         }
     }
 }
