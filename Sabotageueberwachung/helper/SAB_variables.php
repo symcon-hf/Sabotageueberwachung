@@ -265,7 +265,7 @@ trait SAB_variables
         $useOverview = $this->ReadPropertyBoolean('UseOverview');
         if ($useOverview) {
             $string = "<table style='width: 100%; border-collapse: collapse;'>";
-            $string .= '<tr><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td><td><b>Sabotagestatus</b></td></tr>';
+            $string .= '<tr><td><b>Status</b></td><td><b>ID</b></td><td><b>Name</b></td><td><b>Adresse</b></td></tr>';
             $variables = json_decode($this->ReadPropertyString('MonitoredVariables'));
             if (!empty($variables)) {
                 foreach ($variables as $variable) {
@@ -277,16 +277,11 @@ trait SAB_variables
                             if (!$deviceAddress) {
                                 $deviceAddress = '-';
                             }
-                            $actualStateText = 'OK';
-                            //Set color to red
-                            $actualValue = boolval(GetValue($id));
-                            if ($actualValue) {
-                                $id = '<span style="color:#FF0000"><b>' . $id . '</b></span>';
-                                $name = '<span style="color:#FF0000"><b>' . $variable->Name . '</b></span>';
-                                $deviceAddress = '<span style="color:#FF0000"><b>' . $deviceAddress . '</b></span>';
-                                $actualStateText = '<span style="color:#FF0000"><b>Sabotage!</b></span>';
+                            $unicode = json_decode('"\u2705"'); # white_check_mark
+                            if (boolval(GetValue($id))) {
+                                $unicode = json_decode('"\u26a0\ufe0f"'); # warning
                             }
-                            $string .= '<tr><td>' . $id . '</td><td>' . $name . '</td><td>' . $deviceAddress . '</td><td>' . $actualStateText . '</td></tr>';
+                            $string .= '<tr><td>' . $unicode . '</td><td>' . $id . '</td><td>' . $name . '</td><td>' . $deviceAddress . '</td></tr>';
                         }
                     }
                 }
