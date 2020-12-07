@@ -34,7 +34,6 @@ trait SAB_variables
             return;
         }
         $timeStamp = date('d.m.Y, H:i:s');
-        $alarmObjectName = $this->ReadPropertyString('Location');
         $alarmProtocol = $this->ReadPropertyInteger('AlarmProtocol');
         $name = '';
         $monitoringActive = $this->GetValue('Monitoring');
@@ -57,8 +56,8 @@ trait SAB_variables
                 @AP_UpdateMessages($alarmProtocol, $logText, 2);
             }
             //Notification
-            $title = $alarmObjectName . ', Sabotage!';
-            $this->SendNotification($title, $logText, 3);
+            $actionText = 'Sabotage!';
+            $this->SendNotification($actionText, $text, $logText, 3);
         }
     }
 

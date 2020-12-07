@@ -94,7 +94,8 @@
           "type": "SelectModule",
           "name": "AlarmProtocol",
           "caption": "Alarmprotokoll",
-          "moduleID": "{33EF9DF1-C8D7-01E7-F168-0A1927F1C61F}"
+          "moduleID": "{33EF9DF1-C8D7-01E7-F168-0A1927F1C61F}",
+          "width": "600px"
         }
       ]
     },
@@ -106,7 +107,8 @@
           "type": "SelectModule",
           "name": "NotificationCenter",
           "caption": "Benachrichtigungszentrale",
-          "moduleID": "{0A9D7D1E-286F-BC3C-F162-7622A53EBE5A}"
+          "moduleID": "{0A9D7D1E-286F-BC3C-F162-7622A53EBE5A}",
+          "width": "600px"
         }
       ]
     }
